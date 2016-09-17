@@ -183,7 +183,7 @@ def download_plugins(session):
         if len(version_id_groups) > 0:
             version_id = version_id_groups[0]
             download_url = 'http://oxidemod.org/plugins/' + plugin.name + '.' + plugin.resource_id + "/download?version=" + version_id
-            # download_file(session, download_url, plugin.filename)
+            download_file(session, download_url, plugin.filename)
         else:
             not_added.append(plugin.filename + "Reason: Couldnt find download link. Page: " + plugin_page)
             download_file(session, plugin_page, plugin.filename + ".page")
