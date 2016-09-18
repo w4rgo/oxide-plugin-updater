@@ -1,6 +1,6 @@
 import requests, os, re, argparse
 
-VERSION = 1.0
+VERSION = 1.0.0
 
 parser = argparse.ArgumentParser(description='Oxide plugin updater')
 requiredNamed = parser.add_argument_group('required named arguments')
