@@ -1,6 +1,6 @@
 import requests, os, re, argparse
 
-VERSION = 1.0
+VERSION = 1.0.0
 
 
 parser = argparse.ArgumentParser(description='Oxide plugin updater')
@@ -165,14 +165,16 @@ def download_plugins(session):
         r = session.get(plugin_page)
 
         print("-> " + str(plugin))
-        pattern = r"""plugins/"""+plugin.name.lower().replace(" ","-")+"""."""+plugin.resource_id+"""/download\?version=([0-9]*)"""
-        version_id_match = re.findall(pattern, r.text)
-        if len(version_id_match) > 0:
-	    version_id = version_id_match[0]
-	    download_url = 'http://oxidemod.org/plugins/' + plugin.name + '.' + plugin.resource_id + "/download?version=" + version_id
-    	    download_file(session, download_url, plugin.filename)
-	else:
-	    not_added.append(plugin.name + " Not download url")
+        pattern = r"""plugins/.*\.""" + plugin.resource_id + """/download\?version=([0-9]*)"""
+        version_id_groups = re.findall(pattern, r.text)
+        if len(version_id_groups) > 0:
+            version_id = version_id_groups[0]
+            download_url = 'http://oxidemod.org/plugins/' + plugin.name + '.' + plugin.resource_id + "/download?version=" + version_id
+            download_file(session, download_url, plugin.filename)
+        else:
+            not_added.append(plugin.filename + "Reason: Couldnt find download link. Page: " + plugin_page)
+            download_file(session, plugin_page, plugin.filename + ".page")
+
 
 def printInfo(message):
     print("############################################")
