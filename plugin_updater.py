@@ -2,6 +2,7 @@ import requests, os, re, argparse
 
 VERSION = 1.0
 
+
 parser = argparse.ArgumentParser(description='Oxide plugin updater')
 requiredNamed = parser.add_argument_group('required named arguments')
 requiredNamed.add_argument('-pluginDir', help='Oxide plugin directory', required=True)
@@ -13,10 +14,9 @@ data = {"login": args.login, "password": args.password}
 plugin_dir = args.pluginDir
 plugin_extensions = ['cs', 'py', 'lua']
 
+
 plugins = []
 not_added = []
-
-
 class Plugin:
     def __init__(self, filename, name, author, version, resource_id):
         self.name = name
@@ -26,20 +26,21 @@ class Plugin:
         self.filename = filename
 
     def __str__(self):
-        return self.name + " " + self.version + " by " + self.author + " with ResourceId: " + self.resource_id
+        return self.name + " " + self.version + " by " +  self.author + " with ResourceId: " + self.resource_id
 
 
 def get_plugin_info(name, extension):
     full_name = name + "." + extension
     if extension == "cs":
-        result = get_csharp_plugin_info(full_name)
+        added = get_csharp_plugin_info(full_name)
     if extension == "py":
-        result = get_python_plugin_info(full_name)
+        added = get_python_plugin_info(full_name)
     if extension == "lua":
-        result = get_lua_plugin_info(full_name)
+        added = get_lua_plugin_info(full_name)
 
-    if result != "":
-        not_added.append(full_name + " Reason: " + result)
+    if not added:
+        not_added.append(full_name)
+
 
 
 def get_csharp_plugin_info(full_name):
@@ -65,18 +66,11 @@ def get_csharp_plugin_info(full_name):
             if len(info_split) > 2:
                 version = raw_info.split(",")[2].lstrip().strip().replace("\"", "")
             if len(info_split) > 3:
-                resource_id = raw_info.split(",")[3].replace("\"", "").replace("ResourceId", "").replace("=",
-                                                                                                         "").lstrip().strip()
+                resource_id = raw_info.split(",")[3].replace("\"", "").replace("ResourceId","").replace("=", "").lstrip().strip()
             if name != "" and resource_id != "":
                 plugins.append(Plugin(full_name, name, author, version, resource_id))
-                return ""
-            else:
-                if name == "":
-                    return "Not found name"
-                if resource_id == "":
-                    return "Not found resource"
-    return "Unknown reason"
-
+                return True
+    return False
 
 def get_python_plugin_info(full_name):
     # self.Title = "NotePad"
@@ -95,21 +89,17 @@ def get_python_plugin_info(full_name):
             line = line.replace(" ", "").replace("=", "").replace("\"", "").replace("\t", "").strip()
             if "self.Title" in line:
                 name = line.replace("self.Title", "").lstrip().strip()
-            else:
-                return "Not found name"
             if "self.Author" in line:
                 author = line.replace("self.Author", "").lstrip().strip()
             if "self.Version" in line:
                 version = line.replace("self.Version", "").replace("V", "").lstrip().strip()
             if "self.ResourceId" in line:
                 resource_id = line.replace("self.ResourceId", "").lstrip().strip()
-            else:
-                return "Not found resource"
+
     if name != "" and resource_id != "":
         plugins.append(Plugin(full_name, name, author, version, resource_id))
-        return ""
-    return "Unknown reason"
-
+        return True
+    return False
 
 def get_lua_plugin_info(full_name):
     # PLUGIN.Title = "Push API"
@@ -130,21 +120,17 @@ def get_lua_plugin_info(full_name):
             line = line.replace("=", "").replace("\"", "").replace("\t", "").replace("(", "").replace(")", "").strip()
             if "PLUGIN.Title" in line:
                 name = line.replace("PLUGIN.Title", "").lstrip().strip()
-            else:
-                return "Not found name"
             if "PLUGIN.Author" in line:
                 author = line.replace("PLUGIN.Author", "").lstrip().strip()
             if "PLUGIN.Version" in line:
                 version = line.replace("PLUGIN.Version", "").replace("V", "").replace(",", ".").lstrip().strip()
             if "PLUGIN.ResourceId" in line:
                 resource_id = line.replace("PLUGIN.ResourceId", "").lstrip().strip()
-            else:
-                return "Not found resource"
+
     if name != "" and resource_id != "":
         plugins.append(Plugin(full_name, name, author, version, resource_id))
-        return ""
-    return "Unknown reason"
-
+        return True
+    return False
 
 def fetch_plugins():
     for filename in os.listdir(plugin_dir):
@@ -164,8 +150,9 @@ def login():
 
 
 def download_file(s, url, filename):
+
     r = s.get(url, stream=True)
-    with open(os.path.join(plugin_dir, filename), 'wb') as f:
+    with open(os.path.join(plugin_dir,filename), 'wb') as f:
         for chunk in r.iter_content(chunk_size=1024):
             if chunk:  # filter out keep-alive new chunks
                 f.write(chunk)
@@ -178,16 +165,14 @@ def download_plugins(session):
         r = session.get(plugin_page)
 
         print("-> " + str(plugin))
-        pattern = r"""plugins/.*\.""" + plugin.resource_id + """/download\?version=([0-9]*)"""
-        version_id_groups = re.findall(pattern, r.text)
-        if len(version_id_groups) > 0:
-            version_id = version_id_groups[0]
-            download_url = 'http://oxidemod.org/plugins/' + plugin.name + '.' + plugin.resource_id + "/download?version=" + version_id
-            # download_file(session, download_url, plugin.filename)
-        else:
-            not_added.append(plugin.filename + "Reason: Couldnt find download link. Page: " + plugin_page)
-            download_file(session, plugin_page, plugin.filename + ".page")
-
+        pattern = r"""plugins/"""+plugin.name.lower().replace(" ","-")+"""."""+plugin.resource_id+"""/download\?version=([0-9]*)"""
+        version_id_match = re.findall(pattern, r.text)
+        if len(version_id_match) > 0:
+	    version_id = version_id_match[0]
+	    download_url = 'http://oxidemod.org/plugins/' + plugin.name + '.' + plugin.resource_id + "/download?version=" + version_id
+    	    download_file(session, download_url, plugin.filename)
+	else:
+	    not_added.append(plugin.name + " Not download url")
 
 def printInfo(message):
     print("############################################")
@@ -195,7 +180,7 @@ def printInfo(message):
     print("############################################")
 
 
-printInfo("Oxide plugin updater " + str(VERSION) + " By W4rGo")
+printInfo("Oxide plugin updater "+ str(VERSION) +" By W4rGo")
 print("Fetching plugins...")
 fetch_plugins()
 print("Connecting to oxide Mod...")
