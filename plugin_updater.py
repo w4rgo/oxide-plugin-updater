@@ -1,6 +1,6 @@
 import requests, os, re, argparse
 
-VERSION = "1.0.3"
+VERSION = "1.0.4"
 
 
 parser = argparse.ArgumentParser(description='Oxide plugin updater')
@@ -106,7 +106,7 @@ def get_lua_plugin_info(full_name):
     # PLUGIN.Version = V(0, 2, 0)
     # PLUGIN.Description = "API for sending messages via mobile notification services."
     # PLUGIN.Author = "Wulf / Luke Spragg"
-    # PLUGIN.Url = "http://oxidemod.org/plugins/705/"
+    # PLUGIN.Url = "https://oxidemod.org/plugins/705/"
     # PLUGIN.ResourceId = 705
 
     plugin_file = open(os.path.join(plugin_dir, full_name), 'r')
@@ -143,7 +143,7 @@ def fetch_plugins():
 
 
 def login():
-    login_url = "http://www.oxidemod.org/login/login"
+    login_url = "https://oxidemod.org/login/login"
     session = requests.session()
     session.post(login_url, data)
     return session
@@ -161,7 +161,7 @@ def download_file(s, url, filename):
 
 def download_plugins(session):
     for plugin in plugins:
-        plugin_page = 'http://oxidemod.org/plugins/' + plugin.resource_id
+        plugin_page = 'https://oxidemod.org/plugins/' + plugin.resource_id
         r = session.get(plugin_page)
 
         print("-> " + str(plugin))
