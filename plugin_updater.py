@@ -1,6 +1,9 @@
-import requests, os, re, argparse
+import requests, os, re, argparse, sys, urllib
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-VERSION = "1.0.3"
+
+VERSION = "1.0.5"
 
 
 parser = argparse.ArgumentParser(description='Oxide plugin updater')
@@ -106,7 +109,7 @@ def get_lua_plugin_info(full_name):
     # PLUGIN.Version = V(0, 2, 0)
     # PLUGIN.Description = "API for sending messages via mobile notification services."
     # PLUGIN.Author = "Wulf / Luke Spragg"
-    # PLUGIN.Url = "http://oxidemod.org/plugins/705/"
+    # PLUGIN.Url = "https://oxidemod.org/plugins/705/"
     # PLUGIN.ResourceId = 705
 
     plugin_file = open(os.path.join(plugin_dir, full_name), 'r')
@@ -143,10 +146,15 @@ def fetch_plugins():
 
 
 def login():
-    login_url = "http://www.oxidemod.org/login/login"
+    login_url = "https://oxidemod.org/login/login"
     session = requests.session()
-    session.post(login_url, data)
+    resp = session.post(login_url, data, verify=False)
+    if (resp.status_code) != 200:
+        print"Login error. Status not 200: "
+        print(resp.status_code)
+        sys.exit(resp.status_code)
     return session
+
 
 
 def download_file(s, url, filename):
@@ -161,7 +169,7 @@ def download_file(s, url, filename):
 
 def download_plugins(session):
     for plugin in plugins:
-        plugin_page = 'http://oxidemod.org/plugins/' + plugin.resource_id
+        plugin_page = 'https://oxidemod.org/plugins/' + plugin.resource_id
         r = session.get(plugin_page)
 
         print("-> " + str(plugin))
@@ -169,7 +177,7 @@ def download_plugins(session):
         version_id_groups = re.findall(pattern, r.text)
         if len(version_id_groups) > 0:
             version_id = version_id_groups[0]
-            download_url = 'http://oxidemod.org/plugins/' + plugin.name + '.' + plugin.resource_id + "/download?version=" + version_id
+            download_url = 'http://oxidemod.org/plugins/' + urllib.quote_plus(plugin.name) + '.' + plugin.resource_id + "/download?version=" + version_id
             download_file(session, download_url, plugin.filename)
         else:
             not_added.append(plugin.filename + "Reason: Couldnt find download link. Page: " + plugin_page)
